@@ -13,18 +13,22 @@
       },
       "contract": {
         "title": "Contrat",
-        "data": { "contract_id": "Contrat à suivre" }
+        "data": {
+          "contract_id": "Contrat à suivre"
+        }
       },
       "reauth_confirm": {
         "title": "Reconnexion",
         "description": "Le portail refuse les identifiants de {username}. Saisissez le nouveau mot de passe.",
-        "data": { "password": "Mot de passe" }
+        "data": {
+          "password": "Mot de passe"
+        }
       }
     },
     "error": {
       "cannot_connect": "Portail injoignable",
       "invalid_auth": "Identifiants refusés",
-      "invalid_url": "URL invalide (ex. https://monfournisseur.client.exemple.fr)",
+      "invalid_url": "URL invalide : adresse complète du portail, avec https",
       "api_id_not_found": "Ce site ne ressemble pas à un portail JVS iclients (Api-Id introuvable)",
       "no_contract": "Aucun contrat actif sur ce compte"
     },
@@ -43,10 +47,18 @@
   },
   "entity": {
     "sensor": {
-      "water_index": { "name": "Index compteur" },
-      "daily_consumption": { "name": "Consommation du dernier relevé" },
-      "last_reading": { "name": "Dernier relevé" },
-      "meter_serial": { "name": "Numéro de série du compteur" }
+      "water_index": {
+        "name": "Index compteur"
+      },
+      "daily_consumption": {
+        "name": "Consommation du dernier relevé"
+      },
+      "last_reading": {
+        "name": "Dernier relevé"
+      },
+      "meter_serial": {
+        "name": "Numéro de série du compteur"
+      }
     }
   }
 }
