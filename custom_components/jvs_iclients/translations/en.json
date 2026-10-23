@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Water subscriber portal",
+        "description": "Pick your provider, or \"Other JVS portal\" and the URL of its subscriber portal.",
+        "data": {
+          "provider": "Provider",
+          "base_url": "Portal URL (if \"Other\")",
+          "username": "Email",
+          "password": "Password"
+        }
+      },
+      "contract": {
+        "title": "Contract",
+        "data": { "contract_id": "Contract to track" }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "The portal rejected the credentials of {username}. Enter the new password.",
+        "data": { "password": "Password" }
+      }
+    },
+    "error": {
+      "cannot_connect": "Portal unreachable",
+      "invalid_auth": "Invalid credentials",
+      "invalid_url": "Invalid URL (e.g. https://provider.client.example.fr)",
+      "api_id_not_found": "This site does not look like a JVS iclients portal (Api-Id not found)",
+      "no_contract": "No active contract on this account"
+    },
+    "abort": {
+      "already_configured": "This contract is already configured",
+      "reauth_successful": "Re-authentication successful"
+    }
+  },
+  "selector": {
+    "provider": {
+      "options": {
+        "eaudupic": "Eau du Pic (Grand Pic Saint-Loup)",
+        "custom": "Other JVS iclients portal"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_index": { "name": "Meter index" },
+      "daily_consumption": { "name": "Last reading consumption" },
+      "last_reading": { "name": "Last reading" },
+      "meter_serial": { "name": "Meter serial number" }
+    }
+  }
+}

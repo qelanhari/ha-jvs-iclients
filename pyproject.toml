@@ -1,0 +1,30 @@
+[project]
+name = "ha-jvs-iclients"
+version = "0.1.0"
+description = "Intégration Home Assistant pour les portails abonnés eau JVS-Mairistem (iclients), préréglage Eau du Pic"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest-homeassistant-custom-component",
+    "pytest-asyncio",
+    "pytest-mock>=3.14",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ANN", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=custom_components.jvs_iclients --cov-report=term-missing -p no:cacheprovider"

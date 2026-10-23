@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Portail abonnés eau",
+        "description": "Choisissez votre fournisseur, ou « Autre portail JVS » et l'URL de son portail abonnés.",
+        "data": {
+          "provider": "Fournisseur",
+          "base_url": "URL du portail (si « Autre »)",
+          "username": "E-mail",
+          "password": "Mot de passe"
+        }
+      },
+      "contract": {
+        "title": "Contrat",
+        "data": { "contract_id": "Contrat à suivre" }
+      },
+      "reauth_confirm": {
+        "title": "Reconnexion",
+        "description": "Le portail refuse les identifiants de {username}. Saisissez le nouveau mot de passe.",
+        "data": { "password": "Mot de passe" }
+      }
+    },
+    "error": {
+      "cannot_connect": "Portail injoignable",
+      "invalid_auth": "Identifiants refusés",
+      "invalid_url": "URL invalide (ex. https://monfournisseur.client.exemple.fr)",
+      "api_id_not_found": "Ce site ne ressemble pas à un portail JVS iclients (Api-Id introuvable)",
+      "no_contract": "Aucun contrat actif sur ce compte"
+    },
+    "abort": {
+      "already_configured": "Ce contrat est déjà configuré",
+      "reauth_successful": "Reconnexion réussie"
+    }
+  },
+  "selector": {
+    "provider": {
+      "options": {
+        "eaudupic": "Eau du Pic (Grand Pic Saint-Loup)",
+        "custom": "Autre portail JVS iclients"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_index": { "name": "Index compteur" },
+      "daily_consumption": { "name": "Consommation du dernier relevé" },
+      "last_reading": { "name": "Dernier relevé" },
+      "meter_serial": { "name": "Numéro de série du compteur" }
+    }
+  }
+}

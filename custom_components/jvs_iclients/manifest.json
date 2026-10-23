@@ -1,0 +1,13 @@
+{
+  "domain": "jvs_iclients",
+  "name": "Portail abonnés eau JVS (Eau du Pic)",
+  "codeowners": ["@qelanhari"],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/qelanhari/ha-jvs-iclients",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/qelanhari/ha-jvs-iclients/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
