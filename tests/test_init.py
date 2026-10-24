@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -14,7 +15,12 @@ from pytest_mock import MockerFixture
 
 from custom_components.jvs_iclients import coordinator as coordinator_module
 from custom_components.jvs_iclients.api import PARIS, JvsAuthError, JvsPortalError, Meter, Reading
-from custom_components.jvs_iclients.const import DOMAIN, INITIAL_HISTORY_DAYS, REFRESH_WINDOW_DAYS
+from custom_components.jvs_iclients.const import (
+    AUTH_RETRY_DELAY,
+    DOMAIN,
+    INITIAL_HISTORY_DAYS,
+    REFRESH_WINDOW_DAYS,
+)
 
 STATISTIC_ID = "jvs_iclients:eaudupic_client_ccgpsl_fr_5288_water_index"
 READINGS = [
@@ -27,6 +33,7 @@ METER = Meter("SERIAL0001", "DIEHL", "15", "GPVW", "2025-07-02")
 @pytest.fixture
 def client(mocker: MockerFixture) -> MagicMock:
     client = mocker.patch("custom_components.jvs_iclients.JvsIclientsClient").return_value
+    client.authenticate = AsyncMock()
     client.readings = AsyncMock(return_value=READINGS)
     client.meter = AsyncMock(return_value=METER)
     return client
@@ -122,14 +129,45 @@ async def test_no_new_readings_keeps_previous_state(
 
 
 @pytest.mark.usefixtures("statistics")
-async def test_auth_error_starts_reauth(
+async def test_auth_error_retries_without_reauth(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, client: MagicMock
 ) -> None:
-    client.readings.side_effect = JvsAuthError("expired")
+    client.authenticate.side_effect = JvsAuthError("refused")
     await setup_entry(hass, mock_config_entry)
-    assert mock_config_entry.state is ConfigEntryState.SETUP_ERROR
-    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
-    assert [f["context"]["source"] for f in flows] == [SOURCE_REAUTH]
+    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+    assert hass.config_entries.flow.async_progress_by_handler(DOMAIN) == []
+
+
+@pytest.mark.usefixtures("statistics")
+async def test_auth_error_after_setup_retries_in_one_hour(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, client: MagicMock
+) -> None:
+    await setup_entry(hass, mock_config_entry)
+    client.authenticate.side_effect = JvsAuthError("refused")
+    coordinator = mock_config_entry.runtime_data
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is False
+    assert coordinator.update_interval == AUTH_RETRY_DELAY
+    assert hass.config_entries.flow.async_progress_by_handler(DOMAIN) == []
+
+
+@pytest.mark.usefixtures("statistics")
+async def test_every_poll_logs_in_again(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, client: MagicMock
+) -> None:
+    await setup_entry(hass, mock_config_entry)
+    await mock_config_entry.runtime_data.async_refresh()
+    assert client.authenticate.await_count == 2
+
+
+@pytest.mark.usefixtures("client", "statistics")
+async def test_success_schedules_next_slot(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mocker: MockerFixture
+) -> None:
+    now = datetime(2026, 10, 24, 9, 30, tzinfo=PARIS)
+    mocker.patch.object(coordinator_module.dt_util, "now", return_value=now)
+    await setup_entry(hass, mock_config_entry)
+    assert mock_config_entry.runtime_data.update_interval == timedelta(hours=6, minutes=30)
 
 
 @pytest.mark.usefixtures("statistics")
@@ -156,5 +194,16 @@ def test_build_statistic_id_is_valid_and_unique_per_host() -> None:
     assert first != second
 
 
-def test_update_interval_is_twice_a_day() -> None:
-    assert coordinator_module.UPDATE_INTERVAL == timedelta(hours=12)
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        (datetime(2026, 10, 24, 7, 59), datetime(2026, 10, 24, 8, 0)),
+        (datetime(2026, 10, 24, 8, 0), datetime(2026, 10, 24, 16, 0)),
+        (datetime(2026, 10, 24, 12, 0), datetime(2026, 10, 24, 16, 0)),
+        (datetime(2026, 10, 24, 16, 0, 0, 1), datetime(2026, 10, 25, 8, 0)),
+        (datetime(2026, 10, 24, 23, 30), datetime(2026, 10, 25, 8, 0)),
+    ],
+)
+def test_next_poll_is_08_or_16_local(now: datetime, expected: datetime) -> None:
+    tz = ZoneInfo("Europe/Paris")
+    assert coordinator_module.next_poll(now.replace(tzinfo=tz)) == expected.replace(tzinfo=tz)

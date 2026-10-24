@@ -10,13 +10,14 @@ de Home Assistant à la bonne date, pour le tableau de bord Énergie (section Ea
 ## Fonctionnement
 
 - Un relevé par jour, daté 01:00, publié avec 1 à 2 jours de retard : l'intégration interroge le portail
-  toutes les 12 h et **réimporte les 7 derniers jours** comme statistique externe
+  **à 08:00 et 16:00** (heure locale) et **réimporte les 7 derniers jours** comme statistique externe
   `jvs_iclients:<hôte>_<contrat>_water_index` (m³ ; `state` = index, `sum` = index moins l'index du premier relevé, pour que la somme démarre à 0). Au premier démarrage, elle charge
   **2 ans d'historique**.
 - Entités par contrat : index compteur (m³), consommation du dernier relevé (L), date du dernier relevé,
   numéro de série du compteur (diagnostic). Appareil « Compteur eau <n° contrat> » avec marque et diamètre.
-- Le JWT du portail expire après 100 h : reconnexion automatique, et flux de **réauthentification** HA si
-  le mot de passe change.
+- Chaque relance refait un login complet, aucun jeton n'est conservé. Si le portail refuse
+  l'authentification ou est injoignable, l'intégration **réessaie une heure plus tard** sans redemander le
+  mot de passe (pas de flux de réauthentification).
 - Pour un autre fournisseur sur le même produit JVS, choisir « Autre portail JVS iclients » et saisir l'URL
   du portail : le `Api-Id` (constante propre à chaque collectivité) est **détecté automatiquement** dans
   le bundle JS public du portail.

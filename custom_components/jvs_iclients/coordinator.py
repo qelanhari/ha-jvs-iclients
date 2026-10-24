@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
 
 from homeassistant.components.recorder import get_instance
@@ -20,12 +20,18 @@ from homeassistant.components.recorder.statistics import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfVolume
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from .api import Contract, JvsAuthError, JvsIclientsClient, JvsPortalError, Meter, Reading
-from .const import DOMAIN, INITIAL_HISTORY_DAYS, REFRESH_WINDOW_DAYS, UPDATE_INTERVAL
+from .const import (
+    AUTH_RETRY_DELAY,
+    DOMAIN,
+    INITIAL_HISTORY_DAYS,
+    POLL_HOURS,
+    REFRESH_WINDOW_DAYS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +44,12 @@ class JvsData:
     meter: Meter | None
 
 
+def next_poll(now: datetime, hours: tuple[int, ...] = POLL_HOURS) -> datetime:
+    """Prochain créneau de relance (heure locale de ``now``) strictement après ``now``."""
+    slots = [now.replace(hour=h, minute=0, second=0, microsecond=0) for h in sorted(hours)]
+    return next((slot for slot in slots if slot > now), slots[0] + timedelta(days=1))
+
+
 def build_statistic_id(base_url: str, contract_id: str) -> str:
     """Identifiant de statistique externe, unique par portail et contrat."""
     host = slugify(urlparse(base_url).netloc)
@@ -45,7 +57,11 @@ def build_statistic_id(base_url: str, contract_id: str) -> str:
 
 
 class JvsCoordinator(DataUpdateCoordinator[JvsData]):
-    """Interroge le portail deux fois par jour et alimente les statistiques."""
+    """Interroge le portail à 08:00 et 16:00 et alimente les statistiques.
+
+    Chaque relance refait un login complet, aucun jeton n'est conservé. Un refus
+    d'authentification n'ouvre pas de flux de reconnexion : nouvel essai une heure plus tard.
+    """
 
     def __init__(
         self,
@@ -60,7 +76,7 @@ class JvsCoordinator(DataUpdateCoordinator[JvsData]):
             _LOGGER,
             config_entry=entry,
             name=f"{DOMAIN} {contract.number}",
-            update_interval=UPDATE_INTERVAL,
+            update_interval=AUTH_RETRY_DELAY,
         )
         self.client = client
         self.contract = contract
@@ -74,12 +90,17 @@ class JvsCoordinator(DataUpdateCoordinator[JvsData]):
             days=INITIAL_HISTORY_DAYS if baseline is None else REFRESH_WINDOW_DAYS
         )
         try:
+            await self.client.authenticate()
             readings = await self.client.readings(self.contract.id, start, date.today())
             meter = previous.meter or await self.client.meter(self.contract.id)
         except JvsAuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
+            self.update_interval = AUTH_RETRY_DELAY
+            raise UpdateFailed(f"authentification refusée, nouvel essai dans 1 h ({err})") from err
         except JvsPortalError as err:
+            self.update_interval = AUTH_RETRY_DELAY
             raise UpdateFailed(str(err)) from err
+        now = dt_util.now()
+        self.update_interval = next_poll(now) - now
         if readings:
             self._import_statistics(readings, baseline)
         return JvsData(latest=readings[-1] if readings else previous.latest, meter=meter)

@@ -6,11 +6,7 @@ par l'en-tête ``Authorization`` (JWT renvoyé en en-tête de réponse) et les c
 
 from __future__ import annotations
 
-import base64
-import json
 import re
-import time
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
@@ -20,7 +16,6 @@ from aiohttp import ClientError, ClientSession
 
 JSON_API = "application/vnd.api+json"
 PARIS = ZoneInfo("Europe/Paris")
-_TOKEN_SAFETY_MARGIN_S = 300
 _BUNDLE_RE = re.compile(r'src="(/assets/index-[^"]+\.js)"')
 _API_ID_RE = re.compile(r'"Api-Id":"([^"]+)"')
 
@@ -71,14 +66,6 @@ class Reading:
     def index_m3(self) -> float:
         """Index compteur en m³."""
         return self.index_liters / 1000
-
-
-def _jwt_expiry(authorization: str) -> float:
-    """Extrait ``exp`` du JWT contenu dans ``Jwt id="<jwt>"``."""
-    token = authorization.split('"')[1] if '"' in authorization else authorization
-    payload = token.split(".")[1]
-    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
-    return float(claims["exp"])
 
 
 def parse_reading(item: dict[str, Any]) -> Reading | None:
@@ -136,7 +123,7 @@ async def discover_api_id(session: ClientSession, base_url: str) -> str:
 
 
 class JvsIclientsClient:
-    """Client authentifié ; se reconnecte quand le JWT approche de son expiration."""
+    """Client du portail : ``authenticate()`` avant chaque série d'appels, aucun jeton conservé."""
 
     def __init__(
         self,
@@ -145,13 +132,11 @@ class JvsIclientsClient:
         api_id: str,
         login: str,
         password: str,
-        clock: Callable[[], float] = time.time,
     ) -> None:
         self._session = session
         self._base_url = base_url.rstrip("/")
         self._login = login
         self._password = password
-        self._clock = clock
         # Origin et Referer sont obligatoires : sans eux, 403 vide sur les endpoints de données.
         self._headers = {
             "Accept": JSON_API,
@@ -160,7 +145,6 @@ class JvsIclientsClient:
             "Origin": self._base_url,
             "Referer": f"{self._base_url}/accueil",
         }
-        self._expires_at = 0.0
 
     async def authenticate(self) -> None:
         """POST /signin ; conserve l'en-tête ``authorization`` renvoyé."""
@@ -186,7 +170,6 @@ class JvsIclientsClient:
         except ClientError as err:
             raise JvsPortalError(f"portail injoignable: {err}") from err
         self._headers["Authorization"] = authorization
-        self._expires_at = _jwt_expiry(authorization)
 
     async def contracts(self) -> list[Contract]:
         """GET /contrat : contrats du compte."""
@@ -209,8 +192,6 @@ class JvsIclientsClient:
         return sorted((r for r in parsed if r is not None), key=lambda r: r.at)
 
     async def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
-        if self._clock() >= self._expires_at - _TOKEN_SAFETY_MARGIN_S:
-            await self.authenticate()
         try:
             async with self._session.get(
                 f"{self._base_url}{path}", params=params, headers=self._headers
