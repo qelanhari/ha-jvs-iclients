@@ -27,7 +27,8 @@ PROVIDERS: dict[str, dict[str, str]] = {
 POLL_HOURS: tuple[int, ...] = (8, 16)
 # Délai avant nouvel essai après un refus d'authentification ou une erreur du portail.
 AUTH_RETRY_DELAY = timedelta(hours=1)
-# Fenêtre réimportée à chaque rafraîchissement (les relevés arrivent avec 1 à 2 jours de retard).
-REFRESH_WINDOW_DAYS = 7
+# Fenêtre réimportée à chaque rafraîchissement : les relevés arrivent avec 1 à 2 jours de
+# retard, mais après une panne le portail comble les trous plus d'une semaine après.
+REFRESH_WINDOW_DAYS = 31
 # Historique récupéré au premier import.
 INITIAL_HISTORY_DAYS = 730

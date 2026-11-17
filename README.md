@@ -10,7 +10,7 @@ de Home Assistant à la bonne date, pour le tableau de bord Énergie (section Ea
 ## Fonctionnement
 
 - Un relevé par jour, daté 01:00, publié avec 1 à 2 jours de retard : l'intégration interroge le portail
-  **à 08:00 et 16:00** (heure locale) et **réimporte les 7 derniers jours** comme statistique externe
+  **à 08:00 et 16:00** (heure locale) et **réimporte les 31 derniers jours** (un portail en panne comble ses trous plus d'une semaine après) comme statistique externe
   `jvs_iclients:<hôte>_<contrat>_water_index` (m³ ; `state` = index, `sum` = index moins l'index du premier relevé, pour que la somme démarre à 0). Au premier démarrage, elle charge
   **2 ans d'historique**.
 - Entités par contrat : index compteur (m³), consommation du dernier relevé (L), date du dernier relevé,

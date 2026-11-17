@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.2
+
+- Fenêtre de réimport portée de 7 à **31 jours** : après une panne, le portail comble ses trous
+  plus d'une semaine après (relevés des 6-8/11/2026 publiés tard, jamais importés).
+
 ## v0.1.1
 
 - Relances à **08:00 et 16:00** (heure locale) au lieu de toutes les 12 h depuis le démarrage.
